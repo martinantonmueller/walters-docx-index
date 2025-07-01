@@ -43,7 +43,7 @@ def extract_comments(docx_file):
     comments = comments_xml.findall(".//w:comment", namespaces=doc.part.package.xmlns)
 
     comment_map = {}
-f   or comment in comments:
+    for comment in comments:
         cid = comment.get("{http://www.w3.org/XML/1998/namespace}id")
         text = ''.join(comment.itertext()).strip()
         comment_map[cid] = text
