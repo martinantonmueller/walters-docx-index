@@ -1,5 +1,6 @@
 import streamlit as st
 import zipfile
+import re
 from lxml import etree
 import requests
 
@@ -55,7 +56,6 @@ def fetch_person_data(person_id):
     try:
         response = requests.get(url, timeout=5)
         st.write(f"API URL: {url}")
-        st.write(f"Status Code: {response.status_code}")
         if response.status_code == 200:
             data = response.json()
             name = data.get('name')
@@ -72,26 +72,36 @@ st.title("Kommentare aus ODT-Dateien mit Personen-Infos")
 
 uploaded = st.file_uploader("Bitte ODT-Datei auswählen", type=["odt"])
 
-
-import re
-
 if uploaded:
     comments = extract_comments_with_context_from_odt_bytesio(uploaded)
     if comments:
-        for c in comments:
-            st.write(f"> Kommentar: {c['comment']}")
-            st.write(f"> Kontext: {c['context_text']}")
+        for i, c in enumerate(comments, start=1):
+            # Kommentartext und Kontext holen
+            comment_text = c['comment']
+            context_text = c['context_text']
 
             # Nummer aus Kommentar extrahieren (Zahl oder aus URL):
-            match = re.search(r'(\d+)', c['comment'])
+            match = re.search(r'(\d+)', comment_text)
             if match:
                 person_id = match.group(1)
                 name, first_name = fetch_person_data(person_id)
                 if name and first_name:
-                    st.success(f"Person gefunden: {first_name} {name}")
+                    person_info = f"{first_name} {name}"
                 else:
-                    st.warning("Personendaten konnten nicht geladen werden.")
+                    person_info = "Personendaten konnten nicht geladen werden."
             else:
-                st.info("Kommentar enthält keine Zahl oder gültige ID.")
+                person_info = "Keine Zahl oder gültige ID im Kommentar gefunden."
+
+            # Ausgabe im grünen Kasten
+            st.markdown(f"""
+            <div style="background-color:#d4edda; border:1px solid #c3e6cb; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
+                <b>Kommentar #{i}</b><br>
+                <b>Kontext:</b> {context_text}<br>
+                <b>URL / Kommentar:</b> {comment_text}<br>
+                <b>Name:</b> {person_info}
+            </div>
+            """, unsafe_allow_html=True)
     else:
         st.info("Keine Kommentare gefunden oder Dokument nicht kompatibel.")
+
+
