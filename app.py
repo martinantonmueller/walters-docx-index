@@ -49,6 +49,9 @@ def extract_comments(docx_file):
         return []
 
     comments_xml = etree.fromstring(comments_part.blob)
+    comments_xml_str = comments_part.blob.decode('utf-8')
+    st.text_area("Kommentare XML komplett", comments_xml_str, height=300)
+    
     comments = comments_xml.findall(".//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}comment")
 
     st.write(f"Gefundene Kommentare: {len(comments)}")
