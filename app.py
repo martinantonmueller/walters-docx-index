@@ -74,6 +74,9 @@ def extract_comments(docx_file):
         
         comment_map[cid] = text
 
+    st.write(f"Gefundene Kommentare im XML: {len(comments)}")
+    st.write("Kommentar-Map:", comment_map)
+
     output_lines = []
     for para in doc.paragraphs:
         for run in para.runs:
@@ -89,8 +92,11 @@ def extract_comments(docx_file):
                     person = get_person_data(pmb_id)
                     if person:
                         extra = f" → {person}"
-                output_lines.append(f"{word}] {comment}{extra}")
+                line = f"{word}] {comment}{extra}"
+                st.write("Gefundener Kommentar-Text:", line)
+                output_lines.append(line)
 
+    st.write(f"Output lines count: {len(output_lines)}")
     return output_lines
 
 # --- STREAMLIT UI ---
