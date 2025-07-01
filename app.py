@@ -39,13 +39,21 @@ def fetch_person_data(person_id):
     url = f"https://pmb.acdh.oeaw.ac.at/apis/api/entities/person/{person_id}/detail"
     try:
         response = requests.get(url, timeout=5)
+        st.write(f"API URL: {url}")
+        st.write(f"Status Code: {response.status_code}")
         if response.status_code == 200:
             data = response.json()
-            # Hier je nach API-Struktur anpassen:
-            name = data.get('name', 'Name nicht gefunden')
-            first_name = data.get('first_name', 'Vorname nicht gefunden')
+            st.write("Rohdaten der API-Antwort:")
+            st.json(data)
+            
+            # Beispiel: mal schauen, welche Felder da sind
+            # Passe hier an, je nachdem, wie die API-Daten aussehen.
+            name = data.get('name')
+            first_name = data.get('first_name')
+            
             return name, first_name
         else:
+            st.error(f"Fehler bei API-Abfrage: Status {response.status_code}")
             return None, None
     except Exception as e:
         st.error(f"API-Abfrage fehlgeschlagen: {e}")
