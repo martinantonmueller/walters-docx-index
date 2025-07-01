@@ -84,7 +84,7 @@ if uploaded:
                 person_id = match.group(1)
                 name, first_name = fetch_person_data(person_id)
                 if name and first_name:
-                    person_info = f"{first_name} {name}"
+                    person_info = f"{first_name} {name} ({start_date_written} – {end_date_written})"
                 else:
                     person_info = "Personendaten konnten nicht geladen werden."
                 # URL fürs Anzeigen, nicht für API
