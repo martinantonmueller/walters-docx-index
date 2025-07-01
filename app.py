@@ -12,7 +12,7 @@ def extract_comments_with_context_from_odt_bytesio(uploaded_file):
         'meta': 'urn:oasis:names:tc:opendocument:xmlns:meta:1.0'
     }
 
-    results = []
+    comments = []
 
     try:
         with zipfile.ZipFile(uploaded_file) as z:
@@ -23,33 +23,48 @@ def extract_comments_with_context_from_odt_bytesio(uploaded_file):
         st.error(f"Fehler beim Lesen der ODT-Datei: {e}")
         return []
 
-    spans_with_annotation = tree.xpath('//text:span[office:annotation]', namespaces=ns)
-    if not spans_with_annotation:
-        return []
+    # Suche alle <text:span>, die eine Annotation haben
+    spans_with_annotations = tree.xpath('//text:span[office:annotation]', namespaces=ns)
 
-    for span in spans_with_annotation:
+    for span in spans_with_annotations:
         annotation = span.find('office:annotation', namespaces=ns)
-        paragraphs = annotation.xpath('./text:p', namespaces=ns)
+        if annotation is None:
+            continue
+        
+        # Kommentartext aus Annotation extrahieren
+        paragraphs = annotation.findall('text:p', namespaces=ns)
         comment_text = "\n".join(''.join(p.itertext()) for p in paragraphs).strip()
+        
+        # Kontext-Text: alles im span außerhalb der Annotation-Elemente (also z.B. nach </office:annotation>)
+        # Wir nehmen den Text des span nach der Annotation (tail) + den restlichen Text im span
+        # Die Annotation-Elemente haben i.d.R. keinen eigenen Text, deshalb:
+        
+        # Der Kontexttext ist der Text im span nach dem Annotation-Element:
+        # Etwa span.text, oder span.tail – man muss vorsichtig mit XML-Text und Tail umgehen.
+        # Einfach alle Texte in span außer Annotation zusammenfassen:
+        
+        context_parts = []
+        # Text vor erster Annotation (falls vorhanden)
+        if span.text:
+            context_parts.append(span.text)
+        # Nach Annotationen jeweils das .tail
+        for elem in span:
+            if elem.tail:
+                context_parts.append(elem.tail)
+        
+        context_text = ''.join(context_parts).strip()
+        
+        # Autor aus Annotation
         author_el = annotation.find('dc:creator', namespaces=ns)
         author = author_el.text if author_el is not None else "Unbekannt"
-        
-        # Text außerhalb der Annotation im selben <text:span>
-        text_outside_annotation = ""
-        for node in span.iterchildren():
-            if node.tag == '{urn:oasis:names:tc:opendocument:xmlns:office:1.0}annotation':
-                continue
-            text_outside_annotation += ''.join(node.itertext())
-        if annotation.tail:
-            text_outside_annotation += annotation.tail.strip()
 
-        results.append({
+        comments.append({
             'author': author,
             'comment': comment_text,
-            'context_text': text_outside_annotation.strip()
+            'context_text': context_text
         })
 
-    return results
+    return comments
 
 def fetch_person_data(person_id):
     api_url = f"https://pmb.acdh.oeaw.ac.at/apis/api/entities/person/{person_id}/"
