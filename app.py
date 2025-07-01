@@ -3,7 +3,7 @@ import zipfile
 from lxml import etree
 import requests
 
-def extract_comments_from_odt_bytesio(uploaded_file):
+def extract_comments_with_context_from_odt_bytesio(uploaded_file):
     ns = {
         'office': 'urn:oasis:names:tc:opendocument:xmlns:office:1.0',
         'text': 'urn:oasis:names:tc:opendocument:xmlns:text:1.0',
@@ -11,7 +11,7 @@ def extract_comments_from_odt_bytesio(uploaded_file):
         'meta': 'urn:oasis:names:tc:opendocument:xmlns:meta:1.0'
     }
 
-    comments = []
+    results = []
 
     try:
         with zipfile.ZipFile(uploaded_file) as z:
@@ -22,30 +22,33 @@ def extract_comments_from_odt_bytesio(uploaded_file):
         st.error(f"Fehler beim Lesen der ODT-Datei: {e}")
         return []
 
-    # Alle Annotations finden
-    annotations = tree.xpath('//office:annotation', namespaces=ns)
-    if not annotations:
+    spans_with_annotation = tree.xpath('//text:span[office:annotation]', namespaces=ns)
+    if not spans_with_annotation:
         return []
 
-    # Alle <span> Elemente mit office:annotation-Attribut finden (dein XPath)
-    annotated_spans = tree.xpath('//text:span[office:annotation]/text()', namespaces=ns)
-
-    # Wir gehen davon aus, dass annotations und annotated_spans in der gleichen Reihenfolge passen
-    for ann, span in zip(annotations, annotated_spans):
-        # Kommentartext zusammenbauen
-        paragraphs = ann.xpath('./text:p', namespaces=ns)
+    for span in spans_with_annotation:
+        annotation = span.find('office:annotation', namespaces=ns)
+        paragraphs = annotation.xpath('./text:p', namespaces=ns)
         comment_text = "\n".join(''.join(p.itertext()) for p in paragraphs).strip()
-
-        # Autor des Kommentars
-        author_el = ann.find('dc:creator', namespaces=ns)
+        author_el = annotation.find('dc:creator', namespaces=ns)
         author = author_el.text if author_el is not None else "Unbekannt"
+        
+        # Text außerhalb der Annotation im selben <text:span>
+        text_outside_annotation = ""
+        for node in span.iterchildren():
+            if node.tag == '{urn:oasis:names:tc:opendocument:xmlns:office:1.0}annotation':
+                continue
+            text_outside_annotation += ''.join(node.itertext())
+        if annotation.tail:
+            text_outside_annotation += annotation.tail.strip()
 
-        # Text, an dem der Kommentar hängt (annotated span Text)
-        annotated_text = ''.join(span.itertext()).strip()
+        results.append({
+            'author': author,
+            'comment': comment_text,
+            'context_text': text_outside_annotation.strip()
+        })
 
-        comments.append((author, comment_text, annotated_text))
-
-    return comments
+    return results
 
 def fetch_person_data(person_id):
     url = f"https://pmb.acdh.oeaw.ac.at/apis/api/entities/person/{person_id}/"
@@ -71,16 +74,12 @@ uploaded = st.file_uploader("Bitte ODT-Datei auswählen", type=["odt"])
 
 
 if uploaded:
-    comments = extract_comments_from_odt_bytesio(uploaded)
-    st.write(f"Gefundene Annotationen: {len(annotations)}")
-    st.write(f"Gefundene annotierte Spans: {len(annotated_spans)}")
+    comments = extract_comments_with_context_from_odt_bytesio(uploaded)
     if comments:
-        st.write(f"{len(comments)} Kommentar(e) gefunden:")
-        for author, comment, annotated_text in comments:
-            st.write(f"**{author}** schrieb:")
-            st.write(f"> {comment}")
-            st.write(f"*Kommentierter Text:* {annotated_text}")
-
+        for c in comments:
+        st.write(f"> Kommentar: {c['comment']}")
+        st.write(f"> Kontext: {c['context_text']}")
+    
             # Prüfen, ob Kommentar nur eine Ziffer ist:
             if comment.isdigit():
                 name, first_name = fetch_person_data(comment)
