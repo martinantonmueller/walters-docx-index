@@ -22,16 +22,28 @@ def extract_comments_from_odt_bytesio(uploaded_file):
         st.error(f"Fehler beim Lesen der ODT-Datei: {e}")
         return []
 
+    # Alle Annotations finden
     annotations = tree.xpath('//office:annotation', namespaces=ns)
     if not annotations:
         return []
 
-    for ann in annotations:
+    # Alle <span> Elemente mit office:annotation-Attribut finden (dein XPath)
+    annotated_spans = tree.xpath('//*[local-name()="span" and @office:annotation]', namespaces=ns)
+
+    # Wir gehen davon aus, dass annotations und annotated_spans in der gleichen Reihenfolge passen
+    for ann, span in zip(annotations, annotated_spans):
+        # Kommentartext zusammenbauen
         paragraphs = ann.xpath('./text:p', namespaces=ns)
         comment_text = "\n".join(''.join(p.itertext()) for p in paragraphs).strip()
+
+        # Autor des Kommentars
         author_el = ann.find('dc:creator', namespaces=ns)
         author = author_el.text if author_el is not None else "Unbekannt"
-        comments.append((author, comment_text))
+
+        # Text, an dem der Kommentar hängt (annotated span Text)
+        annotated_text = ''.join(span.itertext()).strip()
+
+        comments.append((author, comment_text, annotated_text))
 
     return comments
 
@@ -43,14 +55,8 @@ def fetch_person_data(person_id):
         st.write(f"Status Code: {response.status_code}")
         if response.status_code == 200:
             data = response.json()
-            st.write("Rohdaten der API-Antwort:")
-            st.json(data)
-            
-            # Beispiel: mal schauen, welche Felder da sind
-            # Passe hier an, je nachdem, wie die API-Daten aussehen.
             name = data.get('name')
             first_name = data.get('first_name')
-            
             return name, first_name
         else:
             st.error(f"Fehler bei API-Abfrage: Status {response.status_code}")
@@ -67,9 +73,11 @@ if uploaded:
     comments = extract_comments_from_odt_bytesio(uploaded)
     if comments:
         st.write(f"{len(comments)} Kommentar(e) gefunden:")
-        for author, comment in comments:
+        for author, comment, annotated_text in comments:
             st.write(f"**{author}** schrieb:")
             st.write(f"> {comment}")
+            st.write(f"*Kommentierter Text:* {annotated_text}")
+
             # Prüfen, ob Kommentar nur eine Ziffer ist:
             if comment.isdigit():
                 name, first_name = fetch_person_data(comment)
