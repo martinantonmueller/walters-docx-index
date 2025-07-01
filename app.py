@@ -54,29 +54,28 @@ def extract_comments(docx_file):
             text = ''.join(comment.itertext()).strip()
             comment_map[cid] = text
 
-    output_lines = []
     def get_lxml_element(oxml_element):
         xml_str = oxml_element.xml
-    return etree.fromstring(xml_str.encode('utf-8'))
+        return etree.fromstring(xml_str.encode('utf-8'))
 
-for para in doc.paragraphs:
-    for run in para.runs:
-        lxml_elem = get_lxml_element(run._element)
-        comment_refs = lxml_elem.xpath(".//w:commentRangeStart", namespaces=NAMESPACES)
-        if comment_refs:
-            cid = comment_refs[0].get("{http://www.w3.org/XML/1998/namespace}id")
-            word = run.text or ""
-            comment = comment_map.get(cid, "")
-            pmb_id = extract_id(comment)
-            extra = ""
-            if pmb_id:
-                person = get_person_data(pmb_id)
-                if person:
-                    extra = f" → {person}"
-            output_lines.append(f"{word}] {comment}{extra}")
+    output_lines = []
+    for para in doc.paragraphs:
+        for run in para.runs:
+            lxml_elem = get_lxml_element(run._element)
+            comment_refs = lxml_elem.xpath(".//w:commentRangeStart", namespaces=NAMESPACES)
+            if comment_refs:
+                cid = comment_refs[0].get("{http://www.w3.org/XML/1998/namespace}id")
+                word = run.text or ""
+                comment = comment_map.get(cid, "")
+                pmb_id = extract_id(comment)
+                extra = ""
+                if pmb_id:
+                    person = get_person_data(pmb_id)
+                    if person:
+                        extra = f" → {person}"
+                output_lines.append(f"{word}] {comment}{extra}")
 
     return output_lines
-
 # --- STREAMLIT UI ---
 
 st.title("DOCX-Kommentare + PMB-Link-Parser")
