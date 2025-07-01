@@ -37,7 +37,9 @@ def extract_comments(docx_file):
     if not comments_part:
         return []
 
-    comments = comments_part.element.findall(".//w:comment", doc.part.package.xmlns)
+    from lxml import etree
+comments_xml = etree.fromstring(comments_part.blob)
+comments = comments_xml.findall(".//w:comment", namespaces=doc.part.package.xmlns)
     comment_map = {}
     for comment in comments:
         cid = comment.get("{http://www.w3.org/XML/1998/namespace}id")
