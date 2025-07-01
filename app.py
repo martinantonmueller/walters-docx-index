@@ -82,7 +82,7 @@ if uploaded:
             match = re.search(r'(\d+)', comment_text)
             if match:
                 person_id = match.group(1)
-                name, first_name = fetch_person_data(person_id)
+                name, first_name, start_date_written, end_date_written = fetch_person_data(person_id)
                 if name and first_name:
                     person_info = f"{first_name} {name} ({start_date_written} – {end_date_written})"
                 else:
