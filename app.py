@@ -1,12 +1,11 @@
 import streamlit as st
 from docx import Document
-from lxml import etree
 import re
 import requests
+from lxml import etree
 
 NAMESPACES = {
     'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main',
-    'w16cex': 'http://schemas.microsoft.com/office/word/2018/wordml/cex',
     'xml': 'http://www.w3.org/XML/1998/namespace'
 }
 
@@ -31,53 +30,38 @@ def extract_id(comment_text):
         return num_match.group(1)
     return None
 
-def extract_comments_extensible(docx_file):
+def extract_comments(docx_file):
     doc = Document(docx_file)
     comments_part = None
 
+    # Klassische Kommentare suchen
     for rel in doc.part.rels.values():
         if "comments" in rel.reltype:
             comments_part = rel.target_part
             break
 
     if not comments_part:
-        return {}
-
-    comments_xml = etree.fromstring(comments_part.blob)
-
-    if comments_xml.tag.endswith('commentsExtensible'):
-        comments = comments_xml.findall(".//w16cex:commentExtensible", namespaces=NAMESPACES)
-        comment_map = {}
-        for comment in comments:
-            cid = comment.get("{http://schemas.microsoft.com/office/word/2018/wordml/cex}durableId")
-            text = ''.join(comment.xpath(".//w:t//text()", namespaces=NAMESPACES)).strip()
-            comment_map[cid] = text
-        return comment_map
-
-    elif comments_xml.tag.endswith('comments'):
-        comments = comments_xml.findall(".//w:comment", namespaces=NAMESPACES)
-        comment_map = {}
-        for comment in comments:
-            cid = comment.get('{http://www.w3.org/XML/1998/namespace}id')
-            text = ''.join(comment.itertext()).strip()
-            comment_map[cid] = text
-        return comment_map
-
-    else:
-        return {}
-
-def extract_comments(docx_file):
-    comment_map = extract_comments_extensible(docx_file)
-    if not comment_map:
-        st.info("Keine Kommentare im Dokument gefunden oder Format nicht erkannt.")
+        st.warning("Keine klassische comments.xml gefunden. Möglicherweise ist das Dokument moderner und unterstützt dieses Format nicht.")
         return []
 
-    doc = Document(docx_file)
+    comments_xml = etree.fromstring(comments_part.blob)
+    comments = comments_xml.findall(".//w:comment", namespaces=NAMESPACES)
+
+    if not comments:
+        st.warning("comments.xml enthält keine Kommentare.")
+        return []
+
+    comment_map = {}
+    for comment in comments:
+        cid = comment.get('{http://www.w3.org/XML/1998/namespace}id')
+        text = ''.join(comment.itertext()).strip()
+        comment_map[cid] = text
+
     output_lines = []
 
     def get_lxml_element(oxml_element):
         xml_str = oxml_element.xml
-        return etree.fromstring(xml_str.encode("utf-8"))
+        return etree.fromstring(xml_str.encode('utf-8'))
 
     for para in doc.paragraphs:
         for run in para.runs:
@@ -97,8 +81,7 @@ def extract_comments(docx_file):
 
     return output_lines
 
-
-# --- STREAMLIT UI ---
+# --- Streamlit UI ---
 
 st.title("DOCX-Kommentare + PMB-Link-Parser")
 st.write("Lade eine `.docx`-Datei hoch, um Kommentare zu extrahieren.")
