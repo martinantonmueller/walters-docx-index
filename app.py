@@ -69,12 +69,6 @@ def fetch_person_data(person_id):
     except Exception as e:
         st.error(f"API-Abfrage fehlgeschlagen: {e}")
         return None, None, None, None
-        else:
-            st.error(f"Fehler bei API-Abfrage: Status {response.status_code}")
-            return None, None
-    except Exception as e:
-        st.error(f"API-Abfrage fehlgeschlagen: {e}")
-        return None, None
 
 st.title("Kommentare aus ODT-Dateien mit Personen-Infos")
 
