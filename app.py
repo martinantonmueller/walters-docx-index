@@ -42,6 +42,13 @@ def extract_comments(docx_file):
 
     if not comments_part:
         return []
+    
+comments = comments_xml.findall(".//w:comment", namespaces=NAMESPACES)
+st.write(f"Gefundene Kommentare: {len(comments)}")
+
+comments_xml_str = comments_part.blob.decode("utf-8") if isinstance(comments_part.blob, bytes) else comments_part.blob
+st.text_area("Kommentare XML Vorschau", comments_xml_str[:2000])
+comments_xml = etree.fromstring(comments_part.blob)
 
     # Kommentare XML parsen
     comments_xml = etree.fromstring(comments_part.blob)
