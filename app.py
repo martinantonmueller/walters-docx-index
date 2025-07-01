@@ -36,7 +36,7 @@ def extract_comments_from_odt_bytesio(uploaded_file):
     return comments
 
 def fetch_person_data(person_id):
-    url = f"https://pmb.acdh.oeaw.ac.at/apis/api/entities/person/{person_id}/detail"
+    url = f"https://pmb.acdh.oeaw.ac.at/apis/api/entities/person/{person_id}/"
     try:
         response = requests.get(url, timeout=5)
         st.write(f"API URL: {url}")
