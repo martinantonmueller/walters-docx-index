@@ -5,6 +5,11 @@ import requests
 from io import BytesIO
 from lxml import etree
 
+NAMESPACES = {
+    'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main',
+    'xml': 'http://www.w3.org/XML/1998/namespace'
+}
+
 def extract_id(comment_text):
     id_match = re.search(r'/person/(\d+)', comment_text)
     if id_match:
@@ -40,11 +45,11 @@ def extract_comments(docx_file):
 
     
     comments_xml = etree.fromstring(comments_part.blob)
-    comments = comments_xml.findall(".//w:comment", namespaces=doc.part.package.xmlns)
+    comments = comments_part.element.findall(".//w:comment", NAMESPACES)
 
     comment_map = {}
     for comment in comments:
-        cid = comment.get("{http://www.w3.org/XML/1998/namespace}id")
+        cid = comment.get('{http://www.w3.org/XML/1998/namespace}id')
         text = ''.join(comment.itertext()).strip()
         comment_map[cid] = text
 
