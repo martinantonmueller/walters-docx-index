@@ -55,10 +55,14 @@ def extract_comments(docx_file):
             comment_map[cid] = text
 
     output_lines = []
-    for para in doc.paragraphs:
-        for run in para.runs:
-            comment_refs = run._element.xpath(".//w:commentRangeStart", namespaces=NAMESPACES)
-            
+   def get_lxml_element(oxml_element):
+    xml_str = oxml_element.xml
+    return etree.fromstring(xml_str.encode('utf-8'))
+
+for para in doc.paragraphs:
+    for run in para.runs:
+        lxml_elem = get_lxml_element(run._element)
+        comment_refs = lxml_elem.xpath(".//w:commentRangeStart", namespaces=NAMESPACES)
         if comment_refs:
             cid = comment_refs[0].get("{http://www.w3.org/XML/1998/namespace}id")
             word = run.text or ""
