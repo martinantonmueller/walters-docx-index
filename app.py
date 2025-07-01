@@ -73,21 +73,25 @@ st.title("Kommentare aus ODT-Dateien mit Personen-Infos")
 uploaded = st.file_uploader("Bitte ODT-Datei auswählen", type=["odt"])
 
 
+import re
+
 if uploaded:
     comments = extract_comments_with_context_from_odt_bytesio(uploaded)
     if comments:
         for c in comments:
-        st.write(f"> Kommentar: {c['comment']}")
-        st.write(f"> Kontext: {c['context_text']}")
-    
-            # Prüfen, ob Kommentar nur eine Ziffer ist:
-            if comment.isdigit():
-                name, first_name = fetch_person_data(comment)
+            st.write(f"> Kommentar: {c['comment']}")
+            st.write(f"> Kontext: {c['context_text']}")
+
+            # Nummer aus Kommentar extrahieren (Zahl oder aus URL):
+            match = re.search(r'(\d+)', c['comment'])
+            if match:
+                person_id = match.group(1)
+                name, first_name = fetch_person_data(person_id)
                 if name and first_name:
                     st.success(f"Person gefunden: {first_name} {name}")
                 else:
                     st.warning("Personendaten konnten nicht geladen werden.")
             else:
-                st.info("Kommentar enthält keine reine Zahl.")
+                st.info("Kommentar enthält keine Zahl oder gültige ID.")
     else:
         st.info("Keine Kommentare gefunden oder Dokument nicht kompatibel.")
