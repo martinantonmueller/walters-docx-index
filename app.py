@@ -56,10 +56,10 @@ def extract_comments(docx_file):
 
     output_lines = []
     for para in doc.paragraphs:
-    for run in para.runs:
-        comment_refs = run._element.xpath(
-            ".//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}commentRangeStart"
-        )
+        for run in para.runs:
+            comment_refs = run._element.xpath(
+                ".//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}commentRangeStart"
+            )
         if comment_refs:
             cid = comment_refs[0].get("{http://www.w3.org/XML/1998/namespace}id")
             word = run.text or ""
