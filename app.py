@@ -28,7 +28,7 @@ def extract_comments_from_odt_bytesio(uploaded_file):
         return []
 
     # Alle <span> Elemente mit office:annotation-Attribut finden (dein XPath)
-    annotated_spans = tree.xpath('//*[local-name()="span" and @office:annotation]', namespaces=ns)
+    annotated_spans = tree.xpath('//text:span[office:annotation]', namespaces=ns)
 
     # Wir gehen davon aus, dass annotations und annotated_spans in der gleichen Reihenfolge passen
     for ann, span in zip(annotations, annotated_spans):
