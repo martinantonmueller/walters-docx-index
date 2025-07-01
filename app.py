@@ -52,10 +52,10 @@ def extract_comments_with_context_from_odt_bytesio(uploaded_file):
     return results
 
 def fetch_person_data(person_id):
-    url = f"https://pmb.acdh.oeaw.ac.at/apis/api/entities/person/{person_id}/"
+    api_url = f"https://pmb.acdh.oeaw.ac.at/apis/api/entities/person/{person_id}/"
     try:
-        response = requests.get(url, timeout=5)
-        st.write(f"API URL: {url}")
+        response = requests.get(api_url, timeout=5)
+        st.write(f"API URL: {api_url}")
         if response.status_code == 200:
             data = response.json()
             name = data.get('name')
@@ -76,11 +76,9 @@ if uploaded:
     comments = extract_comments_with_context_from_odt_bytesio(uploaded)
     if comments:
         for i, c in enumerate(comments, start=1):
-            # Kommentartext und Kontext holen
             comment_text = c['comment']
             context_text = c['context_text']
 
-            # Nummer aus Kommentar extrahieren (Zahl oder aus URL):
             match = re.search(r'(\d+)', comment_text)
             if match:
                 person_id = match.group(1)
@@ -89,15 +87,17 @@ if uploaded:
                     person_info = f"{first_name} {name}"
                 else:
                     person_info = "Personendaten konnten nicht geladen werden."
+                # URL fürs Anzeigen, nicht für API
+                display_url = f"https://pmb.acdh.oeaw.ac.at/apis/entities/entity/person/{person_id}/detail"
             else:
                 person_info = "Keine Zahl oder gültige ID im Kommentar gefunden."
+                display_url = "Keine gültige URL"
 
-            # Ausgabe im grünen Kasten
             st.markdown(f"""
             <div style="background-color:#d4edda; border:1px solid #c3e6cb; padding: 15px; border-radius: 8px; margin-bottom: 15px;">
                 <b>Kommentar #{i}</b><br>
                 <b>Kontext:</b> {context_text}<br>
-                <b>URL / Kommentar:</b> {comment_text}<br>
+                <b>URL / Kommentar:</b> <a href="{display_url}" target="_blank">{display_url}</a><br>
                 <b>Name:</b> {person_info}
             </div>
             """, unsafe_allow_html=True)
