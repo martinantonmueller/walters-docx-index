@@ -55,8 +55,8 @@ def extract_comments(docx_file):
             comment_map[cid] = text
 
     output_lines = []
-   def get_lxml_element(oxml_element):
-    xml_str = oxml_element.xml
+    def get_lxml_element(oxml_element):
+        xml_str = oxml_element.xml
     return etree.fromstring(xml_str.encode('utf-8'))
 
 for para in doc.paragraphs:
