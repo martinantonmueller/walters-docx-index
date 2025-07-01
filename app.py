@@ -58,9 +58,17 @@ def fetch_person_data(person_id):
         st.write(f"API URL: {api_url}")
         if response.status_code == 200:
             data = response.json()
-            name = data.get('name')
-            first_name = data.get('first_name')
-            return name, first_name
+            name = data.get('name') or ""
+            first_name = data.get('first_name') or ""
+            start_date_written = data.get('start_date_written') or ""
+            end_date_written = data.get('end_date_written') or ""
+            return name, first_name, start_date_written, end_date_written
+        else:
+            st.error(f"Fehler bei API-Abfrage: Status {response.status_code}")
+            return None, None, None, None
+    except Exception as e:
+        st.error(f"API-Abfrage fehlgeschlagen: {e}")
+        return None, None, None, None
         else:
             st.error(f"Fehler bei API-Abfrage: Status {response.status_code}")
             return None, None
@@ -82,12 +90,22 @@ if uploaded:
             match = re.search(r'(\d+)', comment_text)
             if match:
                 person_id = match.group(1)
-                name, first_name, start_date_written, end_date_written = fetch_person_data(person_id)
-                if name and first_name:
-                    person_info = f"{first_name} {name} ({start_date_written} – {end_date_written})"
+                name, first_name, start_date, end_date = fetch_person_data(person_id)
+
+                if name or first_name:
+                    # Lebensdaten nur anzeigen, wenn vorhanden
+                    life_dates = ""
+                    if start_date and end_date:
+                        life_dates = f" ({start_date} – {end_date})"
+                    elif start_date:
+                        life_dates = f" (geb. {start_date})"
+                    elif end_date:
+                        life_dates = f" (gest. {end_date})"
+
+                    person_info = f"{first_name} {name}".strip() + life_dates
                 else:
                     person_info = "Personendaten konnten nicht geladen werden."
-                # URL fürs Anzeigen, nicht für API
+
                 display_url = f"https://pmb.acdh.oeaw.ac.at/apis/entities/entity/person/{person_id}/detail"
             else:
                 person_info = "Keine Zahl oder gültige ID im Kommentar gefunden."
