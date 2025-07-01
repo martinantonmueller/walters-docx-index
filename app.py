@@ -3,6 +3,7 @@ from docx import Document
 import re
 import requests
 from io import BytesIO
+from lxml import etree
 
 def extract_id(comment_text):
     id_match = re.search(r'/person/(\d+)', comment_text)
@@ -37,11 +38,12 @@ def extract_comments(docx_file):
     if not comments_part:
         return []
 
-    from lxml import etree
-comments_xml = etree.fromstring(comments_part.blob)
-comments = comments_xml.findall(".//w:comment", namespaces=doc.part.package.xmlns)
+    
+    comments_xml = etree.fromstring(comments_part.blob)
+    comments = comments_xml.findall(".//w:comment", namespaces=doc.part.package.xmlns)
+
     comment_map = {}
-    for comment in comments:
+f   or comment in comments:
         cid = comment.get("{http://www.w3.org/XML/1998/namespace}id")
         text = ''.join(comment.itertext()).strip()
         comment_map[cid] = text
