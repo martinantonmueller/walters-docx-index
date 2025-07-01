@@ -31,75 +31,48 @@ def extract_id(comment_text):
         return num_match.group(1)
     return None
 
-def extract_comments(docx_file):
+def extract_comments_extensible(docx_file):
     doc = Document(docx_file)
     comments_part = None
 
+    # Suche Part mit Kommentaren (egal ob klassisch oder extensible)
     for rel in doc.part.rels.values():
         if "comments" in rel.reltype:
             comments_part = rel.target_part
             break
 
     if not comments_part:
-        st.warning("Keine Kommentar-Parts im Dokument gefunden!")
         return []
 
-    comments_xml_str = comments_part.blob.decode('utf-8')
-    st.text_area("Kommentare XML komplett", comments_xml_str, height=300)
-
+    # Lade XML
     comments_xml = etree.fromstring(comments_part.blob)
 
-    # Zunächst klassische Kommentare suchen:
-    comments = comments_xml.findall(".//w16cex:commentExtensible", namespaces={
-        'w16cex': 'http://schemas.microsoft.com/office/word/2018/wordml/cex'
-    })
-    if len(comments) == 0:
-        # Wenn keine klassischen Kommentare, dann in extensible Comments suchen:
+    # Prüfe Root-Tag, ob extensible Kommentare vorliegen
+    if comments_xml.tag.endswith('commentsExtensible'):
+        # Kommentare im neuen extensible Format
         comments = comments_xml.findall(".//w16cex:commentExtensible", namespaces=NAMESPACES)
-
-        st.write(f"Gefundene Kommentare: {len(comments)}")
-
-    if len(comments) == 0:
-        st.warning("Keine Kommentare im XML gefunden!")
-        return []
-
-    comment_map = {}
-    for comment in comments:
-        cid = comment.get('{http://www.w3.org/XML/1998/namespace}id')
-        if cid:
-            # Raw XML als Debug
-            raw_xml = etree.tostring(comment, pretty_print=True, encoding='unicode')
-            st.write(f"Kommentar ID: {cid}")
-            st.write(raw_xml)
-            # Versuche Text zusammenzuziehen
-            text = ''.join(comment.itertext()).strip()
-            st.write(f"Extrahierter Text: '{text}'")
+        comment_map = {}
+        for comment in comments:
+            cid = comment.get("{http://schemas.microsoft.com/office/word/2018/wordml/cex}durableId")
+            # Der Text ist oft in einem "w:t" Tag verschachtelt, wir holen alles an Text darunter
+            text = ''.join(comment.xpath(".//w:t//text()", namespaces=NAMESPACES)).strip()
             comment_map[cid] = text
+        return comment_map
 
-    st.write(f"Gefundene Kommentare im XML: {len(comments)}")
-    st.write("Kommentar-Map:", comment_map)
+    elif comments_xml.tag.endswith('comments'):
+        # Klassisches Kommentarformat (Fallback)
+        comments = comments_xml.findall(".//w:comment", namespaces=NAMESPACES)
+        comment_map = {}
+        for comment in comments:
+            cid = comment.get('{http://www.w3.org/XML/1998/namespace}id')
+            text = ''.join(comment.itertext()).strip()
+            comment_map[cid] = text
+        return comment_map
 
-    output_lines = []
-    for para in doc.paragraphs:
-        for run in para.runs:
-            lxml_elem = etree.fromstring(run._element.xml.encode('utf-8'))
-            comment_refs = lxml_elem.xpath(".//w:commentRangeStart", namespaces=NAMESPACES)
-            if comment_refs:
-                cid = comment_refs[0].get("{http://www.w3.org/XML/1998/namespace}id")
-                word = run.text or ""
-                comment = comment_map.get(cid, "")
-                pmb_id = extract_id(comment)
-                extra = ""
-                if pmb_id:
-                    person = get_person_data(pmb_id)
-                    if person:
-                        extra = f" → {person}"
-                line = f"{word}] {comment}{extra}"
-                st.write("Gefundener Kommentar-Text:", line)
-                output_lines.append(line)
+    else:
+        # Unbekanntes Format
+        return {}
 
-    st.write(f"Output lines count: {len(output_lines)}")
-    return output_lines
 
 # --- STREAMLIT UI ---
 
