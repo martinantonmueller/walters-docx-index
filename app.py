@@ -69,8 +69,11 @@ st.title("Kommentare aus ODT-Dateien mit Personen-Infos")
 
 uploaded = st.file_uploader("Bitte ODT-Datei auswählen", type=["odt"])
 
+
 if uploaded:
     comments = extract_comments_from_odt_bytesio(uploaded)
+    st.write(f"Gefundene Annotationen: {len(annotations)}")
+    st.write(f"Gefundene annotierte Spans: {len(annotated_spans)}")
     if comments:
         st.write(f"{len(comments)} Kommentar(e) gefunden:")
         for author, comment, annotated_text in comments:
