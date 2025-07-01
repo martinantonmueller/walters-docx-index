@@ -32,6 +32,9 @@ def extract_id(comment_text):
 
 def extract_comments(docx_file):
     doc = Document(docx_file)
+    comments_xml_str = comments_part.blob.decode('utf-8')
+    st.text_area("Kommentare XML komplett", comments_xml_str, height=300)
+    
     comments_part = None
 
     for rel in doc.part.rels.values():
