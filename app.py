@@ -50,8 +50,10 @@ def extract_comments(docx_file):
     comments_xml = etree.fromstring(comments_part.blob)
 
     # Zunächst klassische Kommentare suchen:
-    comments = comments_xml.findall(".//w:comment", namespaces=NAMESPACES)
-    if len(comments) == 0:
+comments = comments_xml.findall(".//w16cex:commentExtensible", namespaces={
+        'w16cex': 'http://schemas.microsoft.com/office/word/2018/wordml/cex'
+    })
+if len(comments) == 0:
         # Wenn keine klassischen Kommentare, dann in extensible Comments suchen:
         comments = comments_xml.findall(".//w16cex:commentExtensible", namespaces=NAMESPACES)
 
