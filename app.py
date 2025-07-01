@@ -15,7 +15,8 @@ def extract_comments_from_odt_bytesio(uploaded_file):
     try:
         with zipfile.ZipFile(uploaded_file) as z:
             with z.open('content.xml') as f:
-                tree = etree.parse(f)
+                parser = etree.XMLParser(recover=True)  # Wichtig: recover=True erlaubt "kaputtes" XML
+                tree = etree.parse(f, parser)
     except Exception as e:
         st.error(f"Fehler beim Lesen der ODT-Datei: {e}")
         return []
