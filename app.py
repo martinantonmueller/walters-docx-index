@@ -5,6 +5,7 @@ import requests
 from lxml import etree
 
 NAMESPACES = {
+    'w16cex': 'http://schemas.microsoft.com/office/word/2018/wordml/cex',
     'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main',
     'xml': 'http://www.w3.org/XML/1998/namespace'
 }
@@ -51,8 +52,8 @@ def extract_comments(docx_file):
     comments_xml = etree.fromstring(comments_part.blob)
     comments_xml_str = comments_part.blob.decode('utf-8')
     st.text_area("Kommentare XML komplett", comments_xml_str, height=300)
-    
-    comments = comments_xml.findall(".//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}comment")
+
+    comments = comments_xml.findall(".//w16cex:commentExtensible", namespaces=NAMESPACES)
 
     st.write(f"Gefundene Kommentare: {len(comments)}")
     if len(comments) == 0:
