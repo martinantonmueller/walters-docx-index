@@ -42,7 +42,11 @@ def extract_comments_with_context(odt_file):
                 # Wir können eine Map bauen oder einfach den text unmittelbar nach annotation ausgeben.
                 
                 # Alternativ, wir extrahieren den Tail-Text des annotation-Elements:
-                tail_text = annotation.tail or ""
+                tail_text = annotation.tail
+                if tail_text is None:
+                    tail_text = ""
+                else:
+                    tail_text = tail_text.strip()
                 
                 comments.append({
                     'creator': creator_name,
