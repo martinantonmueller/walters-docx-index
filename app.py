@@ -47,8 +47,8 @@ def extract_comments_with_context(odt_file):
                 comments.append({
                     'creator': creator_name,
                     'date': date_str,
-                    'comment_text': comment_text.strip(),
-                    'context_text': tail_text.strip()
+                    'comment_text': comment_text.strip()
+                    
                 })
                 
         if not comments:
