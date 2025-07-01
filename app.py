@@ -1,33 +1,47 @@
 import streamlit as st
-from odf.opendocument import load
-from odf.namespaces import OFFICE, TEXT
-from odf.element import Element
+import zipfile
+from lxml import etree
 
-def extract_odt_comments(odt_file):
-    doc = load(odt_file)
-    annotations = doc.getElementsByType(Element)
+def extract_comments_from_odt_bytesio(uploaded_file):
+    ns = {
+        'office': 'urn:oasis:names:tc:opendocument:xmlns:office:1.0',
+        'text': 'urn:oasis:names:tc:opendocument:xmlns:text:1.0',
+        'dc': 'http://purl.org/dc/elements/1.1/',
+        'meta': 'urn:oasis:names:tc:opendocument:xmlns:meta:1.0'
+    }
+
     comments = []
-    for elem in annotations:
-        if elem.qname[1] == 'annotation' and elem.qname[0] == OFFICE:
-            comment_texts = []
-            for child in elem.childNodes:
-                if child.qname[1] == 'p' and child.qname[0] == TEXT:
-                    text_content = ''.join(node.data for node in child.childNodes if node.nodeType == node.TEXT_NODE)
-                    comment_texts.append(text_content)
-            comment = '\n'.join(comment_texts).strip()
-            if comment:
-                comments.append(comment)
+
+    try:
+        with zipfile.ZipFile(uploaded_file) as z:
+            with z.open('content.xml') as f:
+                tree = etree.parse(f)
+    except Exception as e:
+        st.error(f"Fehler beim Lesen der ODT-Datei: {e}")
+        return []
+
+    annotations = tree.xpath('//office:annotation', namespaces=ns)
+    if not annotations:
+        return []
+
+    for ann in annotations:
+        paragraphs = ann.xpath('./text:p', namespaces=ns)
+        comment_text = "\n".join(''.join(p.itertext()) for p in paragraphs).strip()
+        author_el = ann.find('dc:creator', namespaces=ns)
+        author = author_el.text if author_el is not None else "Unbekannt"
+        comments.append(f"{author}: {comment_text}")
+
     return comments
 
-st.title("Kommentare aus ODT extrahieren")
+st.title("Kommentare aus ODT-Dateien extrahieren")
 
-uploaded = st.file_uploader("ODT-Datei auswählen", type=["odt"])
+uploaded = st.file_uploader("Bitte ODT-Datei auswählen", type=["odt"])
 
 if uploaded:
-    comments = extract_odt_comments(uploaded)
+    comments = extract_comments_from_odt_bytesio(uploaded)
     if comments:
-        st.write(f"{len(comments)} Kommentare gefunden:")
-        for i, c in enumerate(comments, 1):
-            st.markdown(f"**Kommentar {i}:** {c}")
+        st.write(f"{len(comments)} Kommentar(e) gefunden:")
+        for c in comments:
+            st.markdown(f"- {c}")
     else:
         st.info("Keine Kommentare gefunden oder Dokument nicht kompatibel.")
