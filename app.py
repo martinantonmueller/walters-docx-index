@@ -1,13 +1,8 @@
+from odf.opendocument import load
+from odf.text import P, Note
 import streamlit as st
-from docx import Document
 import re
 import requests
-from lxml import etree
-
-NAMESPACES = {
-    'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main',
-    'xml': 'http://www.w3.org/XML/1998/namespace'
-}
 
 @st.cache_data(show_spinner=False)
 def get_person_data(pid):
@@ -30,72 +25,51 @@ def extract_id(comment_text):
         return num_match.group(1)
     return None
 
-def extract_comments(docx_file):
-    doc = Document(docx_file)
-    comments_part = None
+def extract_comments_odt(odt_file):
+    doc = load(odt_file)
 
-    # Klassische Kommentare suchen
-    for rel in doc.part.rels.values():
-        if "comments" in rel.reltype:
-            comments_part = rel.target_part
-            break
-
-    if not comments_part:
-        st.warning("Keine klassische comments.xml gefunden. Möglicherweise ist das Dokument moderner und unterstützt dieses Format nicht.")
-        return []
-
-    comments_xml = etree.fromstring(comments_part.blob)
-    comments = comments_xml.findall(".//w:comment", namespaces=NAMESPACES)
-
-    if not comments:
-        st.warning("comments.xml enthält keine Kommentare.")
-        return []
-
-    comment_map = {}
-    for comment in comments:
-        cid = comment.get('{http://www.w3.org/XML/1998/namespace}id')
-        text = ''.join(comment.itertext()).strip()
-        comment_map[cid] = text
+    # Alle Kommentare (Notes) im Dokument finden
+    notes = doc.getElementsByType(Note)
 
     output_lines = []
+    for note in notes:
+        # Text im Kommentar extrahieren
+        texts = []
+        for node in note.childNodes:
+            if node.nodeType == node.TEXT_NODE:
+                texts.append(node.data)
+            else:
+                # Textknoten rekursiv extrahieren
+                texts.append(node.firstChild.data if node.firstChild else '')
+        comment_text = ''.join(texts).strip()
 
-    def get_lxml_element(oxml_element):
-        xml_str = oxml_element.xml
-        return etree.fromstring(xml_str.encode('utf-8'))
+        # ID extrahieren und ggf. Personendaten holen
+        pmb_id = extract_id(comment_text)
+        extra = ""
+        if pmb_id:
+            person = get_person_data(pmb_id)
+            if person:
+                extra = f" → {person}"
 
-    for para in doc.paragraphs:
-        for run in para.runs:
-            lxml_elem = get_lxml_element(run._element)
-            comment_refs = lxml_elem.xpath(".//w:commentRangeStart", namespaces=NAMESPACES)
-            if comment_refs:
-                cid = comment_refs[0].get("{http://www.w3.org/XML/1998/namespace}id")
-                word = run.text or ""
-                comment = comment_map.get(cid, "")
-                pmb_id = extract_id(comment)
-                extra = ""
-                if pmb_id:
-                    person = get_person_data(pmb_id)
-                    if person:
-                        extra = f" → {person}"
-                output_lines.append(f"{word}] {comment}{extra}")
+        output_lines.append(f"Kommentar: {comment_text}{extra}")
 
     return output_lines
 
 # --- Streamlit UI ---
 
-st.title("DOCX-Kommentare + PMB-Link-Parser")
-st.write("Lade eine `.docx`-Datei hoch, um Kommentare zu extrahieren.")
+st.title("ODT-Kommentare + PMB-Link-Parser")
+st.write("Lade eine `.odt`-Datei hoch, um Kommentare zu extrahieren.")
 
-uploaded = st.file_uploader("DOCX-Datei wählen", type=["docx"])
+uploaded = st.file_uploader("ODT-Datei wählen", type=["odt"])
 
 if uploaded:
-    result = extract_comments(uploaded)
+    result = extract_comments_odt(uploaded)
     if result:
         text_output = "\n".join(result)
         st.download_button(
             "Ergebnis herunterladen",
             text_output.encode("utf-8"),
-            file_name=uploaded.name.replace(".docx", "_index.txt"),
+            file_name=uploaded.name.replace(".odt", "_index.txt"),
             mime="text/plain"
         )
     else:
