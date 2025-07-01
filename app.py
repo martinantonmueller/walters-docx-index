@@ -63,15 +63,15 @@ def extract_comments(docx_file):
 
     comment_map = {}
     for comment in comments:
-        # Für klassische Kommentare
-        cid = comment.get('{http://www.w3.org/XML/1998/namespace}id')
+    cid = comment.get('{http://www.w3.org/XML/1998/namespace}id')
+    if cid:
+        # Raw XML als Debug
+        raw_xml = etree.tostring(comment, pretty_print=True, encoding='unicode')
+        st.write(f"Kommentar ID: {cid}")
+        st.write(raw_xml)
+        # Versuche Text zusammenzuziehen
         text = ''.join(comment.itertext()).strip()
-
-        # Falls keine ID (weil extensible Kommentare andere Struktur haben), 
-        # kann man z.B. durableId als ID verwenden:
-        if not cid:
-            cid = comment.get('{http://schemas.microsoft.com/office/word/2018/wordml/cex}durableId') or "no-id"
-        
+        st.write(f"Extrahierter Text: '{text}'")
         comment_map[cid] = text
 
     st.write(f"Gefundene Kommentare im XML: {len(comments)}")
