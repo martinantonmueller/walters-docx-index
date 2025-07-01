@@ -58,6 +58,15 @@ def extract_comments(docx_file):
         xml_str = oxml_element.xml
         return etree.fromstring(xml_str.encode('utf-8'))
 
+    for rel in doc.part.rels.values():
+        if "comments" in rel.reltype:
+            comments_part = rel.target_part
+            break
+
+    if not comments_part:
+        st.warning("Keine Kommentar-Parts im Dokument gefunden!")
+    return []
+
     output_lines = []
     for para in doc.paragraphs:
         for run in para.runs:
