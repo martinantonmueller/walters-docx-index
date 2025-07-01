@@ -34,25 +34,25 @@ def extract_comments(docx_file):
     doc = Document(docx_file)
     comments_part = None
 
-    # Kommentare-Teil finden
     for rel in doc.part.rels.values():
         if "comments" in rel.reltype:
             comments_part = rel.target_part
             break
 
     if not comments_part:
+        st.warning("Keine Kommentar-Parts im Dokument gefunden!")
         return []
-    
-comments = comments_xml.findall(".//w:comment", namespaces=NAMESPACES)
-st.write(f"Gefundene Kommentare: {len(comments)}")
 
-comments_xml_str = comments_part.blob.decode("utf-8") if isinstance(comments_part.blob, bytes) else comments_part.blob
-st.text_area("Kommentare XML Vorschau", comments_xml_str[:2000])
-comments_xml = etree.fromstring(comments_part.blob)
+    if not comments_part.blob:
+        st.warning("Kommentare-Part ist leer!")
+        return []
 
-    # Kommentare XML parsen
     comments_xml = etree.fromstring(comments_part.blob)
     comments = comments_xml.findall(".//w:comment", namespaces=NAMESPACES)
+    st.write(f"Gefundene Kommentare: {len(comments)}")
+    if len(comments) == 0:
+        st.warning("Keine Kommentare im XML gefunden!")
+        return []
 
     comment_map = {}
     for comment in comments:
