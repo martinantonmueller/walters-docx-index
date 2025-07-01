@@ -1,12 +1,12 @@
 import streamlit as st
 from docx import Document
+from lxml import etree
 import re
 import requests
-from lxml import etree
 
 NAMESPACES = {
-    'w16cex': 'http://schemas.microsoft.com/office/word/2018/wordml/cex',
     'w': 'http://schemas.openxmlformats.org/wordprocessingml/2006/main',
+    'w16cex': 'http://schemas.microsoft.com/office/word/2018/wordml/cex',
     'xml': 'http://www.w3.org/XML/1998/namespace'
 }
 
@@ -35,32 +35,26 @@ def extract_comments_extensible(docx_file):
     doc = Document(docx_file)
     comments_part = None
 
-    # Suche Part mit Kommentaren (egal ob klassisch oder extensible)
     for rel in doc.part.rels.values():
         if "comments" in rel.reltype:
             comments_part = rel.target_part
             break
 
     if not comments_part:
-        return []
+        return {}
 
-    # Lade XML
     comments_xml = etree.fromstring(comments_part.blob)
 
-    # Prüfe Root-Tag, ob extensible Kommentare vorliegen
     if comments_xml.tag.endswith('commentsExtensible'):
-        # Kommentare im neuen extensible Format
         comments = comments_xml.findall(".//w16cex:commentExtensible", namespaces=NAMESPACES)
         comment_map = {}
         for comment in comments:
             cid = comment.get("{http://schemas.microsoft.com/office/word/2018/wordml/cex}durableId")
-            # Der Text ist oft in einem "w:t" Tag verschachtelt, wir holen alles an Text darunter
             text = ''.join(comment.xpath(".//w:t//text()", namespaces=NAMESPACES)).strip()
             comment_map[cid] = text
         return comment_map
 
     elif comments_xml.tag.endswith('comments'):
-        # Klassisches Kommentarformat (Fallback)
         comments = comments_xml.findall(".//w:comment", namespaces=NAMESPACES)
         comment_map = {}
         for comment in comments:
@@ -70,8 +64,34 @@ def extract_comments_extensible(docx_file):
         return comment_map
 
     else:
-        # Unbekanntes Format
         return {}
+
+def extract_comments(docx_file):
+    comment_map = extract_comments_extensible(docx_file)
+    if not comment_map:
+        st.info("Keine Kommentare im Dokument gefunden oder Format nicht erkannt.")
+        return []
+
+    doc = Document(docx_file)
+    output_lines = []
+
+    for para in doc.paragraphs:
+        for run in para.runs:
+            lxml_elem = run._element
+            comment_refs = lxml_elem.xpath(".//w:commentRangeStart", namespaces=NAMESPACES)
+            if comment_refs:
+                cid = comment_refs[0].get("{http://www.w3.org/XML/1998/namespace}id")
+                word = run.text or ""
+                comment = comment_map.get(cid, "")
+                pmb_id = extract_id(comment)
+                extra = ""
+                if pmb_id:
+                    person = get_person_data(pmb_id)
+                    if person:
+                        extra = f" → {person}"
+                output_lines.append(f"{word}] {comment}{extra}")
+
+    return output_lines
 
 
 # --- STREAMLIT UI ---
