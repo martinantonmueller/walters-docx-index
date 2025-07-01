@@ -33,7 +33,6 @@ def extract_id(comment_text):
 
 def extract_comments(docx_file):
     doc = Document(docx_file)
-    
     comments_part = None
 
     for rel in doc.part.rels.values():
@@ -45,45 +44,40 @@ def extract_comments(docx_file):
         st.warning("Keine Kommentar-Parts im Dokument gefunden!")
         return []
 
-    if not comments_part.blob:
-        st.warning("Kommentare-Part ist leer!")
-        return []
-
-    comments_xml = etree.fromstring(comments_part.blob)
     comments_xml_str = comments_part.blob.decode('utf-8')
     st.text_area("Kommentare XML komplett", comments_xml_str, height=300)
 
-    comments = comments_xml.findall(".//w16cex:commentExtensible", namespaces=NAMESPACES)
+    comments_xml = etree.fromstring(comments_part.blob)
+
+    # Zunächst klassische Kommentare suchen:
+    comments = comments_xml.findall(".//w:comment", namespaces=NAMESPACES)
+    if len(comments) == 0:
+        # Wenn keine klassischen Kommentare, dann in extensible Comments suchen:
+        comments = comments_xml.findall(".//w16cex:commentExtensible", namespaces=NAMESPACES)
 
     st.write(f"Gefundene Kommentare: {len(comments)}")
+
     if len(comments) == 0:
         st.warning("Keine Kommentare im XML gefunden!")
         return []
 
     comment_map = {}
     for comment in comments:
+        # Für klassische Kommentare
         cid = comment.get('{http://www.w3.org/XML/1998/namespace}id')
-        if cid:
-            text = ''.join(comment.itertext()).strip()
-            comment_map[cid] = text
+        text = ''.join(comment.itertext()).strip()
 
-    def get_lxml_element(oxml_element):
-        xml_str = oxml_element.xml
-        return etree.fromstring(xml_str.encode('utf-8'))
-
-    for rel in doc.part.rels.values():
-        if "comments" in rel.reltype:
-            comments_part = rel.target_part
-            break
-
-    if not comments_part:
-        st.warning("Keine Kommentar-Parts im Dokument gefunden!")
-    return []
+        # Falls keine ID (weil extensible Kommentare andere Struktur haben), 
+        # kann man z.B. durableId als ID verwenden:
+        if not cid:
+            cid = comment.get('{http://schemas.microsoft.com/office/word/2018/wordml/cex}durableId') or "no-id"
+        
+        comment_map[cid] = text
 
     output_lines = []
     for para in doc.paragraphs:
         for run in para.runs:
-            lxml_elem = get_lxml_element(run._element)
+            lxml_elem = etree.fromstring(run._element.xml.encode('utf-8'))
             comment_refs = lxml_elem.xpath(".//w:commentRangeStart", namespaces=NAMESPACES)
             if comment_refs:
                 cid = comment_refs[0].get("{http://www.w3.org/XML/1998/namespace}id")
@@ -98,6 +92,7 @@ def extract_comments(docx_file):
                 output_lines.append(f"{word}] {comment}{extra}")
 
     return output_lines
+
 # --- STREAMLIT UI ---
 
 st.title("DOCX-Kommentare + PMB-Link-Parser")
