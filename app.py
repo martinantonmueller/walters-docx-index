@@ -34,8 +34,6 @@ def extract_comments(docx_file):
     doc = Document(docx_file)
     
     comments_part = None
-    comments_xml_str = comments_part.blob.decode('utf-8')
-    st.text_area("Kommentare XML komplett", comments_xml_str, height=300)
 
     for rel in doc.part.rels.values():
         if "comments" in rel.reltype:
@@ -51,7 +49,8 @@ def extract_comments(docx_file):
         return []
 
     comments_xml = etree.fromstring(comments_part.blob)
-    comments = comments_xml.findall(".//w:comment", namespaces=NAMESPACES)
+    comments = comments_xml.findall(".//{http://schemas.openxmlformats.org/wordprocessingml/2006/main}comment")
+
     st.write(f"Gefundene Kommentare: {len(comments)}")
     if len(comments) == 0:
         st.warning("Keine Kommentare im XML gefunden!")
