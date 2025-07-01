@@ -70,7 +70,6 @@ def fetch_person_data(person_id):
     api_url = f"https://pmb.acdh.oeaw.ac.at/apis/api/entities/person/{person_id}/"
     try:
         response = requests.get(api_url, timeout=5)
-        st.write(f"API URL: {api_url}")
         if response.status_code == 200:
             data = response.json()
             name = data.get('name') or ""
