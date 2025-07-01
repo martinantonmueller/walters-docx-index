@@ -63,16 +63,16 @@ def extract_comments(docx_file):
 
     comment_map = {}
     for comment in comments:
-    cid = comment.get('{http://www.w3.org/XML/1998/namespace}id')
-    if cid:
-        # Raw XML als Debug
-        raw_xml = etree.tostring(comment, pretty_print=True, encoding='unicode')
-        st.write(f"Kommentar ID: {cid}")
-        st.write(raw_xml)
-        # Versuche Text zusammenzuziehen
-        text = ''.join(comment.itertext()).strip()
-        st.write(f"Extrahierter Text: '{text}'")
-        comment_map[cid] = text
+        cid = comment.get('{http://www.w3.org/XML/1998/namespace}id')
+        if cid:
+            # Raw XML als Debug
+            raw_xml = etree.tostring(comment, pretty_print=True, encoding='unicode')
+            st.write(f"Kommentar ID: {cid}")
+            st.write(raw_xml)
+            # Versuche Text zusammenzuziehen
+            text = ''.join(comment.itertext()).strip()
+            st.write(f"Extrahierter Text: '{text}'")
+            comment_map[cid] = text
 
     st.write(f"Gefundene Kommentare im XML: {len(comments)}")
     st.write("Kommentar-Map:", comment_map)
